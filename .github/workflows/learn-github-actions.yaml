@@ -22,54 +22,109 @@ jobs:
           python: "3.13"
       - run: python -v
 
-  slack-notification-failure:
+  notify-success:
+    runs-on: ubuntu-latest
     needs: 
       - check-bats-version
-      - check-python-version
-    runs-on: ubuntu-latest
-    if: failure()
+      - check-python-version  # Only runs if the 'build' job succeeds
+    if: success()   # Only runs if the 'build' job is successful
     steps:
-      - name: Send Slack notification on failure
+      - name: Trigger success alert
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{
-            "attachments": [
-              {
-                "color": "#FF0000",
+          "channel": "#gha-workflow"
+          for channel in "${channels[@]}"; do
+            response=$(curl -X POST -H 'Content-type: application/json' \
+              --data '{
+                "channel": "'$channel'",
                 "pretext": "GitHub Actions Notification",
-                "channel": "#gha-workflow"
-                "title": ":x: GITHUB ACTIONS FLOW FAILURE :x:",
-                "text": "\n\nAction Required: *DevOps* team to check on this failure.",
-                "icon_emoji": ":exclamation:",
-                "footer": "GitHub Actions",
-                "ts": "'$(date +%s)'"
-              }
-            ]
-          }' \
-          ${{ secrets.GHA_SLACK_WEBHOOK }}
-
-  slack-notification-success:
+                "text": ":white_check_mark: *GHA DEPLOYMENT SUCCESSFUL* :rocket:",
+                "attachments": [
+                  {
+                    "color": "good",
+                    "footer": "GitHub Actions",
+                    "ts": '$(date +%s)',
+                    "fields": [
+                      {
+                        "title": "PULL REQUEST",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "GHA BUILD URL",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "BRANCH",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/tree/${{ github.head_ref }}|${{ github.head_ref }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "CHANGELOG",
+                        "value": "- ${{ github.event.pull_request.title }} (@${{ github.actor }})",
+                        "short": false
+                      },
+                    ]
+                  }
+                ]
+              }' ${{ secrets.GHA_SLACK_WEBHOOK }})
+            # Log the response for debugging
+            echo "Response from Slack for channel $channel: $response"
+            # Sleep to avoid rate limits (optional)
+            sleep 1
+          done
+  notify-failure:
+    runs-on: ubuntu-latest
     needs: 
       - check-bats-version
-      - check-python-version
-    runs-on: ubuntu-latest
-    if: success()
+      - check-python-version  # Only runs if the 'build' job succeeds
+    if: failure()   # Only runs if the 'build' job fails
     steps:
-      - name: Send Slack notification on success
+      - name: Trigger failure alert
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{
-            "attachments": [
-              {
-                "color": "#36a64f",
-                "pretext": "GitHub Actions Notification",
-                "channel": "#gha-workflow"
-                "title": ":white_check_mark: GITHUB ACTIONS FLOW SUCCESS :white_check_mark:",
-                "text": "\n\nNo action required. Your GitHub Actions workflow has been completed successfully.",
-                "icon_emoji": ":heavy_check_mark:",
-                "footer": "GitHub Actions",
-                "ts": "'$(date +%s)'"
-              }
-            ]
-          }' \
-          ${{ secrets.GHA_SLACK_WEBHOOK }}
+          "channel": "#gha-workflow"
+          for channel in "${channels[@]}"; do
+            response=$(curl -X POST -H 'Content-type: application/json' \
+              --data '{
+                "channel": "'$channel'",
+                "text": ":x: *GHA DEPLOYMENT FAILED* :x:",
+                "attachments": [
+                  {
+                    "color": "danger",
+                    "footer": "GitHub Actions",
+                    "ts": '$(date +%s)',
+                    "fields": [
+                      {
+                        "title": "PULL REQUEST",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|#${{ github.event.pull_request.number }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "GHA BUILD URL",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|${{ github.run_id }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "BRANCH",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/tree/${{ github.head_ref }}|${{ github.head_ref }}>",
+                        "short": true
+                      },
+                      {
+                        "title": "JOB",
+                        "value": "${{ github.job }}",
+                        "short": true
+                      },
+                      {
+                        "title": "COMMIT",
+                        "value": "<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}> (@${{ github.actor }})",
+                        "short": false
+                      }
+                    ]
+                  }
+                ]
+              }' ${{ secrets.GHA_SLACK_WEBHOOK }})
+            # Log the response for debugging
+            echo "Response from Slack for channel $channel: $response"
+            # Sleep to avoid rate limits (optional)
+            sleep 1
+          done
