@@ -1,5 +1,5 @@
 name: learn-github-actions #this is the learning file for GHA
-run-name: ${{ gitub.actor }} is learning github learn-github-actions
+run-name: ${{ github.actor }} is learning github learn-github-actions
 on: [push]
 
 jobs:
