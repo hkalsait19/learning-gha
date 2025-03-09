@@ -31,7 +31,6 @@ jobs:
     steps:
       - name: Trigger success alert
         run: |
-          "channel": "#gha-workflow",
           for channel in "${channels[@]}"; do
             response=$(curl -X POST -H 'Content-type: application/json' \
               --data '{
@@ -82,7 +81,6 @@ jobs:
     steps:
       - name: Trigger failure alert
         run: |
-          "channel": "#gha-workflow",
           for channel in "${channels[@]}"; do
             response=$(curl -X POST -H 'Content-type: application/json' \
               --data '{
