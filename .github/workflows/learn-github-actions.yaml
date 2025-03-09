@@ -21,3 +21,55 @@ jobs:
         with:
           python: "3.13"
       - run: python -v
+
+  slack-notification-failure:
+    needs: 
+      - check-bats-version
+      - check-python-version
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Send Slack notification on failure
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "attachments": [
+              {
+                "color": "#FF0000",
+                "pretext": "GitHub Actions Notification",
+                "channel": "#gha-workflow"
+                "title": ":x: GITHUB ACTIONS FLOW FAILURE :x:",
+                "text": "\n\nAction Required: *DevOps* team to check on this failure.",
+                "icon_emoji": ":exclamation:",
+                "footer": "GitHub Actions",
+                "ts": "'$(date +%s)'"
+              }
+            ]
+          }' \
+          ${{ secrets.GHA_SLACK_WEBHOOK }}
+
+  slack-notification-success:
+    needs: 
+      - check-bats-version
+      - check-python-version
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Send Slack notification on success
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "attachments": [
+              {
+                "color": "#36a64f",
+                "pretext": "GitHub Actions Notification",
+                "channel": "#gha-workflow"
+                "title": ":white_check_mark: GITHUB ACTIONS FLOW SUCCESS :white_check_mark:",
+                "text": "\n\nNo action required. Your GitHub Actions workflow has been completed successfully.",
+                "icon_emoji": ":heavy_check_mark:",
+                "footer": "GitHub Actions",
+                "ts": "'$(date +%s)'"
+              }
+            ]
+          }' \
+          ${{ secrets.GHA_SLACK_WEBHOOK }}
